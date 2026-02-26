@@ -32,9 +32,9 @@ https://login.tailscale.com でアカウントを作成しておく。
 ブラウザで GitHub にログインできれば OK。
 セットアップ中に `gh auth login` の認証が始まると、以下の流れで進みます:
 
-1. `? Authenticate Git with your GitHub credentials?` → **Y** (Enter)
-2. ワンタイムコードと URL が表示される
-3. ホスト PC のブラウザで URL を開き、コードを入力して認証
+1. ワンタイムコードが表示される
+2. Enter を押す（ブラウザを開こうとしてエラーが出ますが正常です）
+3. ホスト PC のブラウザで https://github.com/login/device を開き、コードを入力して認証
 
 ## セットアップ手順
 
@@ -67,8 +67,9 @@ VS Code Tunnel も追加したい場合
 1. **Tailscale ホスト名** — Tailnet 上のホスト名を入力（Enter でデフォルト）
 2. **Tailscale 認証** — 表示される URL をブラウザで開いてログイン
 3. **GitHub CLI 認証**
-   - `? Authenticate Git with your GitHub credentials?` → **Y** (Enter)
-   - ワンタイムコードと URL が表示される → ブラウザで URL を開きコードを入力
+   - ワンタイムコードが表示される
+   - Enter を押す（ブラウザが開けないエラーが出ますが、ヘッドレス環境では正常です）
+   - ホスト PC のブラウザで https://github.com/login/device を開き、コードを入力
 
 `--with-vscode` を指定した場合はさらに:
 
