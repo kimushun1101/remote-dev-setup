@@ -116,6 +116,11 @@ cleanup_shell_history() {
 # VS Code Tunnel クリーンアップ（--keep-vscode で保持可能）
 # ---------------------------------------------------------------------------
 cleanup_vscode_tunnel() {
+  # VS Code CLI が存在しない & ~/.vscode-cli もなければスキップ
+  if ! command -v code &>/dev/null && [[ ! -d "${HOME}/.vscode-cli" ]]; then
+    return 0
+  fi
+
   if ! $KEEP_VSCODE; then
     info "VS Code Tunnel をクリーンアップ中..."
 

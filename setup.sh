@@ -2,13 +2,16 @@
 set -euo pipefail
 
 # =============================================================================
-# setup.sh — Tailscale + GitHub CLI + VS Code Tunnel セットアップ
+# setup.sh — Tailscale + GitHub CLI セットアップ
 # 対象: Ubuntu/Debian 系
 #
 # 使い方:
 #   1. ローカルLAN経由で開発機に scp で転送
 #   2. SSH でログインして実行: ./setup.sh
 #   3. 表示されるURLをホストのブラウザで開いて認証
+#
+# オプション:
+#   --with-vscode    VS Code Tunnel もセットアップ
 # =============================================================================
 
 GREEN='\033[0;32m'
@@ -19,6 +22,13 @@ NC='\033[0m'
 info()  { echo -e "${GREEN}[INFO]${NC} $*"; }
 warn()  { echo -e "${YELLOW}[WARN]${NC} $*"; }
 error() { echo -e "${RED}[ERROR]${NC} $*"; exit 1; }
+
+WITH_VSCODE=false
+for arg in "$@"; do
+  case "$arg" in
+    --with-vscode) WITH_VSCODE=true ;;
+  esac
+done
 
 # ---------------------------------------------------------------------------
 # 前提チェック
@@ -184,17 +194,24 @@ setup_vscode_tunnel() {
 # メイン
 # ---------------------------------------------------------------------------
 main() {
+  local components="Tailscale + GitHub CLI"
+  if $WITH_VSCODE; then
+    components="Tailscale + GitHub CLI + VS Code Tunnel"
+  fi
+
   echo ""
   echo "================================================"
   echo "  開発環境セットアップ"
-  echo "  Tailscale + GitHub CLI + VS Code Tunnel"
+  echo "  ${components}"
   echo "================================================"
   echo ""
 
   check_prerequisites
   setup_tailscale
   setup_gh
-  setup_vscode_tunnel
+  if $WITH_VSCODE; then
+    setup_vscode_tunnel
+  fi
 
   echo ""
   echo "================================================"
@@ -204,9 +221,11 @@ main() {
   ts_name=$(tailscale dns name 2>/dev/null | sed 's/\.$//' || tailscale ip -4 2>/dev/null || echo "<Tailscale IP>")
   echo "  SSH で接続:"
   echo "    ssh $(whoami)@${ts_name}"
-  echo ""
-  echo "  VS Code で接続:"
-  echo "    Remote - Tunnels 拡張機能 → トンネル一覧から選択"
+  if $WITH_VSCODE; then
+    echo ""
+    echo "  VS Code で接続:"
+    echo "    Remote - Tunnels 拡張機能 → トンネル一覧から選択"
+  fi
   echo ""
   echo "  作業終了後は ./cleanup.sh を実行してください。"
   echo "================================================"
