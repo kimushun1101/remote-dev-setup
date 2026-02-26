@@ -47,7 +47,6 @@ ssh user@192.168.x.x
 # 2. リポジトリをクローンして実行（フォークした場合にはURLを適宜変更すること）
 git clone https://github.com/kimushun1101/remote-dev-setup.git
 cd remote-dev-setup
-chmod +x *.sh
 ./setup.sh
 ```
 
