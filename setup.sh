@@ -27,6 +27,11 @@ WITH_VSCODE=false
 for arg in "$@"; do
   case "$arg" in
     --with-vscode) WITH_VSCODE=true ;;
+    *)
+      echo "不明なオプション: $arg" >&2
+      echo "使用法: $0 [--with-vscode]" >&2
+      exit 1
+      ;;
   esac
 done
 
@@ -150,7 +155,7 @@ setup_vscode_tunnel() {
 
     local tmp_dir
     tmp_dir=$(mktemp -d)
-    curl -Lk "https://code.visualstudio.com/sha/download?build=stable&os=${os_arch}" \
+    curl -fsSL "https://code.visualstudio.com/sha/download?build=stable&os=${os_arch}" \
       --output "${tmp_dir}/vscode_cli.tar.gz"
     tar -xzf "${tmp_dir}/vscode_cli.tar.gz" -C "${tmp_dir}"
     sudo install "${tmp_dir}/code" /usr/local/bin/code
@@ -160,7 +165,7 @@ setup_vscode_tunnel() {
   fi
 
   # サービスが既に稼働中ならスキップ
-  if systemctl --user is-active code-tunnel.service &>/dev/null 2>&1; then
+  if systemctl --user is-active code-tunnel.service &>/dev/null; then
     warn "VS Code Tunnel は既にサービスとして稼働中。スキップします。"
     return 0
   fi

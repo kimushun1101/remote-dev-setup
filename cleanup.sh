@@ -28,6 +28,11 @@ for arg in "$@"; do
     --uninstall)        DO_UNINSTALL=true ;;
     --keep-tailscale)   KEEP_TAILSCALE=true ;;
     --keep-vscode)      KEEP_VSCODE=true ;;
+    *)
+      echo "不明なオプション: $arg" >&2
+      echo "使用法: $0 [--uninstall] [--keep-tailscale] [--keep-vscode]" >&2
+      exit 1
+      ;;
   esac
 done
 
@@ -36,10 +41,6 @@ done
 # ---------------------------------------------------------------------------
 cleanup_gh() {
   info "GitHub CLI の認証情報をクリーンアップ中..."
-
-  if command -v gh &>/dev/null; then
-    gh auth logout 2>/dev/null || true
-  fi
 
   if [[ -d "${HOME}/.config/gh" ]]; then
     rm -rf "${HOME}/.config/gh"
@@ -94,21 +95,42 @@ cleanup_git_config() {
 cleanup_shell_history() {
   info "シェル履歴からトークン/キーの痕跡を確認中..."
 
-  local histfile="${HISTFILE:-${HOME}/.bash_history}"
-  if [[ -f "$histfile" ]]; then
-    local suspicious
-    suspicious=$(grep -cE '(ghp_|GH_TOKEN|GITHUB_TOKEN)' "$histfile" 2>/dev/null || echo "0")
-    if [[ "$suspicious" -gt 0 ]]; then
-      warn "シェル履歴にトークンらしき文字列が ${suspicious} 件見つかりました。"
-      read -rp "履歴を全消去しますか？ [y/N]: " do_clear
-      if [[ "$do_clear" =~ ^[Yy]$ ]]; then
-        > "$histfile"
-        history -c 2>/dev/null || true
-        info "  シェル履歴を消去"
-      fi
-    else
-      info "  シェル履歴に機密情報は見つかりませんでした"
+  local histfiles=()
+  # HISTFILE が設定されていればそれを優先、なければ一般的な履歴ファイルを探す
+  if [[ -n "${HISTFILE:-}" && -f "${HISTFILE}" ]]; then
+    histfiles+=("${HISTFILE}")
+  fi
+  for f in "${HOME}/.bash_history" "${HOME}/.zsh_history"; do
+    if [[ -f "$f" ]] && [[ ! " ${histfiles[*]:-} " =~ " $f " ]]; then
+      histfiles+=("$f")
     fi
+  done
+
+  if [[ ${#histfiles[@]} -eq 0 ]]; then
+    info "  シェル履歴ファイルが見つかりませんでした"
+    return 0
+  fi
+
+  local total=0
+  for histfile in "${histfiles[@]}"; do
+    local count
+    count=$(grep -cE '(ghp_|tskey-|GH_TOKEN|GITHUB_TOKEN|TAILSCALE_AUTHKEY)' "$histfile" 2>/dev/null || true)
+    count=${count:-0}
+    total=$((total + count))
+  done
+
+  if [[ "$total" -gt 0 ]]; then
+    warn "シェル履歴にトークンらしき文字列が ${total} 件見つかりました。"
+    read -rp "履歴を全消去しますか？ [y/N]: " do_clear
+    if [[ "$do_clear" =~ ^[Yy]$ ]]; then
+      for histfile in "${histfiles[@]}"; do
+        > "$histfile"
+      done
+      history -c 2>/dev/null || true
+      info "  シェル履歴を消去"
+    fi
+  else
+    info "  シェル履歴に機密情報は見つかりませんでした"
   fi
 }
 
@@ -125,13 +147,13 @@ cleanup_vscode_tunnel() {
     info "VS Code Tunnel をクリーンアップ中..."
 
     if command -v code &>/dev/null; then
-      code tunnel service uninstall 2>/dev/null || true
+      code tunnel service uninstall &>/dev/null || true
       info "  Tunnel サービスを解除"
 
-      code tunnel unregister 2>/dev/null || true
+      code tunnel unregister &>/dev/null || true
       info "  Tunnel 登録を解除"
 
-      code tunnel user logout 2>/dev/null || true
+      code tunnel user logout &>/dev/null || true
       info "  ログアウト完了"
 
       if $DO_UNINSTALL; then
