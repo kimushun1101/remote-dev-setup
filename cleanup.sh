@@ -8,6 +8,7 @@ set -euo pipefail
 # オプション:
 #   --uninstall         ツール自体もアンインストール
 #   --keep-tailscale    Tailscale の認証を保持
+#   --keep-vscode       VS Code Tunnel の認証を保持
 # =============================================================================
 
 GREEN='\033[0;32m'
@@ -21,10 +22,12 @@ error() { echo -e "${RED}[ERROR]${NC} $*"; }
 
 DO_UNINSTALL=false
 KEEP_TAILSCALE=false
+KEEP_VSCODE=false
 for arg in "$@"; do
   case "$arg" in
     --uninstall)        DO_UNINSTALL=true ;;
     --keep-tailscale)   KEEP_TAILSCALE=true ;;
+    --keep-vscode)      KEEP_VSCODE=true ;;
   esac
 done
 
@@ -110,6 +113,45 @@ cleanup_shell_history() {
 }
 
 # ---------------------------------------------------------------------------
+# VS Code Tunnel クリーンアップ（--keep-vscode で保持可能）
+# ---------------------------------------------------------------------------
+cleanup_vscode_tunnel() {
+  # VS Code CLI が存在しない & ~/.vscode-cli もなければスキップ
+  if ! command -v code &>/dev/null && [[ ! -d "${HOME}/.vscode-cli" ]]; then
+    return 0
+  fi
+
+  if ! $KEEP_VSCODE; then
+    info "VS Code Tunnel をクリーンアップ中..."
+
+    if command -v code &>/dev/null; then
+      code tunnel service uninstall 2>/dev/null || true
+      info "  Tunnel サービスを解除"
+
+      code tunnel unregister 2>/dev/null || true
+      info "  Tunnel 登録を解除"
+
+      code tunnel user logout 2>/dev/null || true
+      info "  ログアウト完了"
+
+      if $DO_UNINSTALL; then
+        sudo rm -f /usr/local/bin/code
+        info "  VS Code CLI アンインストール完了"
+      fi
+    fi
+
+    if [[ -d "${HOME}/.vscode-cli" ]]; then
+      rm -rf "${HOME}/.vscode-cli"
+      info "  削除: ~/.vscode-cli"
+    fi
+
+    info "VS Code Tunnel クリーンアップ完了"
+  else
+    info "VS Code Tunnel: 保持（--keep-vscode で保持）"
+  fi
+}
+
+# ---------------------------------------------------------------------------
 # Tailscale クリーンアップ（--keep-tailscale で保持可能）
 # ---------------------------------------------------------------------------
 cleanup_tailscale() {
@@ -147,6 +189,14 @@ verify_cleanup() {
     warn "GitHub CLI: 残留ファイルあり"
   else
     info "GitHub CLI: クリーン"
+  fi
+
+  if ! $KEEP_VSCODE; then
+    if [[ -d "${HOME}/.vscode-cli" ]]; then
+      warn "VS Code Tunnel: 残留ファイルあり"
+    else
+      info "VS Code Tunnel: クリーン"
+    fi
   fi
 
   if ! $KEEP_TAILSCALE; then
@@ -191,6 +241,7 @@ main() {
   fi
 
   cleanup_gh
+  cleanup_vscode_tunnel
   cleanup_git_config
   cleanup_tailscale
   cleanup_shell_history
