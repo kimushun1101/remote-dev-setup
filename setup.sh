@@ -1,0 +1,147 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# =============================================================================
+# setup.sh — Tailscale + GitHub CLI セットアップ
+# 対象: Ubuntu/Debian 系
+#
+# 使い方:
+#   1. ローカルLAN経由で開発機に scp で転送
+#   2. SSH でログインして実行: ./setup.sh
+#   3. 表示されるURLをホストのブラウザで開いて認証
+# =============================================================================
+
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+RED='\033[0;31m'
+NC='\033[0m'
+
+info()  { echo -e "${GREEN}[INFO]${NC} $*"; }
+warn()  { echo -e "${YELLOW}[WARN]${NC} $*"; }
+error() { echo -e "${RED}[ERROR]${NC} $*"; exit 1; }
+
+# ---------------------------------------------------------------------------
+# 前提チェック
+# ---------------------------------------------------------------------------
+check_prerequisites() {
+  info "前提条件をチェック中..."
+
+  if ! command -v curl &>/dev/null; then
+    error "curl が見つかりません。先に sudo apt install curl を実行してください。"
+  fi
+
+  if ! command -v git &>/dev/null; then
+    error "git が見つかりません。先に sudo apt install git を実行してください。"
+  fi
+
+  info "前提条件 OK"
+}
+
+# ---------------------------------------------------------------------------
+# Tailscale インストール＆認証
+# ---------------------------------------------------------------------------
+setup_tailscale() {
+  if command -v tailscale &>/dev/null; then
+    local status
+    status=$(tailscale status --json 2>/dev/null | grep -o '"BackendState":"[^"]*"' | cut -d'"' -f4 || echo "unknown")
+    if [[ "$status" == "Running" ]]; then
+      warn "Tailscale は既に稼働中。スキップします。"
+      tailscale status
+      return 0
+    else
+      warn "Tailscale はインストール済みですが未接続 (${status})。接続を試みます。"
+    fi
+  else
+    info "Tailscale をインストール中..."
+    curl -fsSL https://tailscale.com/install.sh | sh
+    info "Tailscale インストール完了"
+  fi
+
+  local default_hostname
+  default_hostname=$(hostname)
+  read -rp "  Tailnet 上のホスト名 [${default_hostname}]: " ts_hostname
+  ts_hostname="${ts_hostname:-$default_hostname}"
+
+  echo ""
+  info "Tailscale 認証を開始します"
+  echo "  表示されるURLをホストPCのブラウザで開いてください。"
+  echo ""
+
+  sudo tailscale up --ssh --hostname="${ts_hostname}"
+
+  echo ""
+  info "Tailscale 接続完了"
+  tailscale status
+
+  local ts_ip
+  ts_ip=$(tailscale ip -4 2>/dev/null || echo "取得失敗")
+  info "この端末の Tailscale IP: ${ts_ip}"
+  echo ""
+}
+
+# ---------------------------------------------------------------------------
+# GitHub CLI インストール＆認証
+# ---------------------------------------------------------------------------
+setup_gh() {
+  # インストール
+  if command -v gh &>/dev/null; then
+    local ver
+    ver=$(gh --version 2>/dev/null | head -1)
+    warn "GitHub CLI は既にインストール済み (${ver})。"
+  else
+    info "GitHub CLI をインストール中..."
+
+    sudo mkdir -p /etc/apt/keyrings
+    curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
+      | sudo tee /etc/apt/keyrings/githubcli-archive-keyring.gpg > /dev/null
+    sudo chmod go+r /etc/apt/keyrings/githubcli-archive-keyring.gpg
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" \
+      | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
+
+    sudo apt update -qq
+    sudo apt install -y gh
+
+    info "GitHub CLI インストール完了: $(gh --version | head -1)"
+  fi
+
+  # 認証
+  if gh auth status &>/dev/null; then
+    warn "GitHub CLI は既に認証済み。スキップします。"
+    gh auth status
+    return 0
+  fi
+
+  echo ""
+  info "GitHub 認証を開始します"
+  echo "  表示されるURLとコードをホストPCのブラウザで入力してください。"
+  echo ""
+
+  gh auth login --web --git-protocol https
+  info "GitHub 認証完了"
+}
+
+# ---------------------------------------------------------------------------
+# メイン
+# ---------------------------------------------------------------------------
+main() {
+  echo ""
+  echo "================================================"
+  echo "  開発環境セットアップ"
+  echo "  Tailscale + GitHub CLI"
+  echo "================================================"
+  echo ""
+
+  check_prerequisites
+  setup_tailscale
+  setup_gh
+
+  echo ""
+  echo "================================================"
+  info "セットアップ完了！"
+  echo ""
+  echo "  作業終了後は ./cleanup.sh を実行してください。"
+  echo "================================================"
+  echo ""
+}
+
+main "$@"
