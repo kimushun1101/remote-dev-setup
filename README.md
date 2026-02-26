@@ -43,12 +43,23 @@ https://login.tailscale.com でアカウントを作成しておく。
 ssh user@192.168.x.x
 ```
 
+リポジトリをクローンして実行（フォークした場合にはURLを適宜変更すること）
+
 ```bash
-# 2. リポジトリをクローンして実行（フォークした場合にはURLを適宜変更すること）
 git clone https://github.com/kimushun1101/remote-dev-setup.git
 cd remote-dev-setup
-./setup.sh                  # 基本セットアップ（Tailscale + GitHub CLI）
-./setup.sh --with-vscode    # VS Code Tunnel も追加する場合
+```
+
+基本セットアップ（Tailscale + GitHub CLI）
+
+```bash
+./setup.sh
+```
+
+VS Code Tunnel も追加したい場合
+
+```bash
+./setup.sh --with-vscode
 ```
 
 スクリプト実行中に以下の操作が求められます:
