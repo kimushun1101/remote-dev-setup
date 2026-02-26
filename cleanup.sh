@@ -7,7 +7,7 @@ set -euo pipefail
 #
 # オプション:
 #   --uninstall         ツール自体もアンインストール
-#   --remove-tailscale  Tailscale も削除
+#   --keep-tailscale    Tailscale の認証を保持
 # =============================================================================
 
 GREEN='\033[0;32m'
@@ -20,11 +20,11 @@ warn()  { echo -e "${YELLOW}[WARN]${NC} $*"; }
 error() { echo -e "${RED}[ERROR]${NC} $*"; }
 
 DO_UNINSTALL=false
-KEEP_TAILSCALE=true
+KEEP_TAILSCALE=false
 for arg in "$@"; do
   case "$arg" in
     --uninstall)        DO_UNINSTALL=true ;;
-    --remove-tailscale) KEEP_TAILSCALE=false ;;
+    --keep-tailscale)   KEEP_TAILSCALE=true ;;
   esac
 done
 
@@ -110,7 +110,7 @@ cleanup_shell_history() {
 }
 
 # ---------------------------------------------------------------------------
-# Tailscale クリーンアップ（明示的に指定した場合のみ）
+# Tailscale クリーンアップ（--keep-tailscale で保持可能）
 # ---------------------------------------------------------------------------
 cleanup_tailscale() {
   if ! $KEEP_TAILSCALE; then
@@ -129,7 +129,7 @@ cleanup_tailscale() {
       fi
     fi
   else
-    info "Tailscale: 保持（--remove-tailscale で削除可能）"
+    info "Tailscale: 保持（デフォルトでは削除。--keep-tailscale で保持）"
   fi
 }
 
@@ -161,6 +161,12 @@ verify_cleanup() {
   info "クリーンアップ完了。"
   if $DO_UNINSTALL; then
     info "ツールのアンインストールも完了しました。"
+  fi
+
+  if ! $KEEP_TAILSCALE; then
+    echo ""
+    warn "Tailscale 管理画面からこの端末を手動で削除してください:"
+    echo "  https://login.tailscale.com/admin/machines"
   fi
   echo ""
 }

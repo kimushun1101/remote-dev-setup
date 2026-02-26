@@ -17,48 +17,49 @@
 https://login.tailscale.com でアカウントを作成しておく。
 （Google / Microsoft / GitHub アカウントでログイン可能）
 
-### GitHub Personal Access Token の作成
+### GitHub アカウント
 
-`gh auth login` はブラウザ認証を使うため、トークンの手動作成は不要です。
 ブラウザで GitHub にログインできれば OK。
+セットアップ中に `gh auth login` の認証が始まると、以下の流れで進みます:
 
-> **補足: トークンを手動で作成したい場合**
->
-> 1. https://github.com/settings/tokens?type=beta にアクセス
-> 2. 「Generate new token」をクリック
-> 3. 設定:
->    - **Token name**: 分かりやすい名前（例: `dev-pc2`）
->    - **Expiration**: 短めに設定（7日 や 30日 を推奨）
->    - **Repository access**: 必要なリポジトリを選択
->    - **Permissions**: `Contents` (Read and write), `Metadata` (Read-only)
-> 4. 「Generate token」で発行し、表示されたトークンをコピー
->
-> 手動トークンを使う場合は `gh auth login --with-token` で認証できます:
-> ```bash
-> echo "ghp_xxxxxxxxxxxx" | gh auth login --with-token
-> ```
+1. `? Authenticate Git with your GitHub credentials?` → **Y** (Enter)
+2. ワンタイムコードと URL が表示される
+3. ホスト PC のブラウザで URL を開き、コードを入力して認証
 
 ## セットアップ手順
 
 ```bash
 # 1. リモート開発機に SSH でログイン
 ssh user@192.168.x.x
+```
 
-# 2. リポジトリをクローンして実行
-git clone https://github.com/<user>/remote-dev-setup.git
+```bash
+# 2. リポジトリをクローンして実行（フォークした場合にはURLを適宜変更すること）
+git clone https://github.com/kimushun1101/remote-dev-setup.git
 cd remote-dev-setup
 chmod +x *.sh
 ./setup.sh
-
-# 3. 表示されるURLをホストPCのブラウザで開いて認証
-#    - Tailscale: ログインURLが表示される → ブラウザで承認
-#    - GitHub CLI: URLとコードが表示される → ブラウザで入力
 ```
+
+スクリプト実行中に以下の操作が求められます:
+
+1. **Tailscale ホスト名** — Tailnet 上のホスト名を入力（Enter でデフォルト）
+2. **Tailscale 認証** — 表示される URL をブラウザで開いてログイン
+3. **GitHub CLI 認証**
+   - `? Authenticate Git with your GitHub credentials?` → **Y** (Enter)
+   - ワンタイムコードと URL が表示される → ブラウザで URL を開きコードを入力
 
 ## 作業終了時
 
 ```bash
-./cleanup.sh                                    # 認証情報のみ削除
-./cleanup.sh --uninstall                        # gh もアンインストール
-./cleanup.sh --uninstall --remove-tailscale     # 全部削除
+./cleanup.sh                                    # 認証情報を削除（Tailscale含む）
+./cleanup.sh --keep-tailscale                   # Tailscale は残す
+./cleanup.sh --uninstall                        # 認証削除 + ツールもアンインストール
 ```
+
+> **注意**: `cleanup.sh` は Tailscale のローカル認証を無効化しますが、
+> [Tailscale 管理画面](https://login.tailscale.com/admin/machines) からマシンのエントリは自動削除されません。
+> クリーンアップ後に管理画面から手動で削除してください。
+>
+> **補足**: 管理画面の **Settings → Device management → Auto-remove inactive devices** を
+> 有効にすると、一定期間非アクティブなデバイスが自動で削除されます。
