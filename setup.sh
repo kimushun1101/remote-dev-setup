@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # =============================================================================
-# setup.sh — Tailscale + GitHub CLI セットアップ
+# setup.sh — Tailscale + GitHub CLI + VS Code Tunnel セットアップ
 # 対象: Ubuntu/Debian 系
 #
 # 使い方:
@@ -121,19 +121,81 @@ setup_gh() {
 }
 
 # ---------------------------------------------------------------------------
+# VS Code Tunnel インストール＆認証
+# ---------------------------------------------------------------------------
+setup_vscode_tunnel() {
+  # インストール
+  if command -v code &>/dev/null; then
+    warn "VS Code CLI は既にインストール済み。"
+  else
+    info "VS Code CLI をインストール中..."
+
+    local arch os_arch
+    arch=$(uname -m)
+    case "$arch" in
+      x86_64)  os_arch="cli-linux-x64" ;;
+      aarch64) os_arch="cli-linux-arm64" ;;
+      armv7l)  os_arch="cli-linux-armhf" ;;
+      *)       error "未対応のアーキテクチャ: ${arch}" ;;
+    esac
+
+    local tmp_dir
+    tmp_dir=$(mktemp -d)
+    curl -Lk "https://code.visualstudio.com/sha/download?build=stable&os=${os_arch}" \
+      --output "${tmp_dir}/vscode_cli.tar.gz"
+    tar -xzf "${tmp_dir}/vscode_cli.tar.gz" -C "${tmp_dir}"
+    sudo install "${tmp_dir}/code" /usr/local/bin/code
+    rm -rf "${tmp_dir}"
+
+    info "VS Code CLI インストール完了"
+  fi
+
+  # サービスが既に稼働中ならスキップ
+  if systemctl --user is-active code-tunnel.service &>/dev/null 2>&1; then
+    warn "VS Code Tunnel は既にサービスとして稼働中。スキップします。"
+    return 0
+  fi
+
+  # 認証
+  echo ""
+  info "VS Code Tunnel 認証を開始します"
+  echo "  表示されるURLとコードをホストPCのブラウザで入力してください。"
+  echo ""
+
+  code tunnel user login --provider github
+
+  info "VS Code Tunnel 認証完了"
+
+  # トンネル名の設定 & サービス登録
+  local default_tunnel_name
+  default_tunnel_name=$(hostname)
+  read -rp "  Tunnel 名 [${default_tunnel_name}]: " tunnel_name
+  tunnel_name="${tunnel_name:-$default_tunnel_name}"
+
+  echo ""
+  code tunnel service install --accept-server-license-terms --name "${tunnel_name}"
+
+  echo ""
+  info "VS Code Tunnel サービス登録完了（自動起動有効）"
+  echo "  ホストPCの VS Code で Remote - Tunnels 拡張機能から接続できます。"
+  echo ""
+}
+
+# ---------------------------------------------------------------------------
 # メイン
 # ---------------------------------------------------------------------------
 main() {
   echo ""
   echo "================================================"
   echo "  開発環境セットアップ"
-  echo "  Tailscale + GitHub CLI"
+  echo "  Tailscale + GitHub CLI + VS Code Tunnel"
   echo "================================================"
   echo ""
 
   check_prerequisites
   setup_tailscale
   setup_gh
+  setup_vscode_tunnel
 
   echo ""
   echo "================================================"
@@ -141,8 +203,11 @@ main() {
   echo ""
   local ts_name
   ts_name=$(tailscale dns name 2>/dev/null | sed 's/\.$//' || tailscale ip -4 2>/dev/null || echo "<Tailscale IP>")
-  echo "  他のPCからこの端末に接続するには:"
+  echo "  SSH で接続:"
   echo "    ssh $(whoami)@${ts_name}"
+  echo ""
+  echo "  VS Code で接続:"
+  echo "    Remote - Tunnels 拡張機能 → トンネル一覧から選択"
   echo ""
   echo "  作業終了後は ./cleanup.sh を実行してください。"
   echo "================================================"

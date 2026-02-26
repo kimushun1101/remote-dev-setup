@@ -1,13 +1,23 @@
 # remote-dev-setup
 
-リモート開発機に Tailscale + GitHub CLI をセットアップするスクリプト。
-認証は全てホストPCのブラウザから行えるため、開発機にブラウザは不要。
+リモート開発機に Tailscale + GitHub CLI + VS Code Tunnel をセットアップするスクリプト。
+初回のローカルネットワーク SSH だけで設定すれば、以降はどこからでも開発機に接続できます。
+
+## 特徴
+
+- **セットアップ後はどこからでも接続可能** — 初回セットアップはローカルネットワーク経由の SSH が必要ですが、Tailscale 設定後はインターネット越しにどこからでも SSH 接続できます
+- **SSH 鍵の管理が不要** — Tailscale SSH（`--ssh`）を利用するため、SSH 鍵の生成・配置・管理が不要です
+- **VS Code でもすぐに接続可能** — VS Code Tunnel をサービスとして登録するため、セットアップ後はホスト PC の VS Code からいつでも接続できます
+- **開発機にブラウザ不要** — Tailscale・GitHub CLI・VS Code Tunnel の認証はすべてホスト PC のブラウザで完結します
+- **共有マシンでも安全** — `cleanup.sh` が認証情報・Git 設定・シェル履歴まで丁寧にクリーンアップします
+- **再実行しても安全** — インストール済み・認証済みの項目は自動でスキップされます
 
 ## ファイル
 
 | ファイル | 用途 |
 | --- | --- |
-| `setup.sh` | Tailscale + GitHub CLI のインストールと認証 |
+| `setup.sh` | Tailscale + GitHub CLI + VS Code Tunnel のインストールと認証 |
+| `other-tools.md` | その他のツールの参考情報 |
 | `cleanup.sh` | 認証情報の削除（+ オプションでアンインストール） |
 
 ## 事前準備
@@ -48,12 +58,15 @@ chmod +x *.sh
 3. **GitHub CLI 認証**
    - `? Authenticate Git with your GitHub credentials?` → **Y** (Enter)
    - ワンタイムコードと URL が表示される → ブラウザで URL を開きコードを入力
+4. **VS Code Tunnel 認証** — 表示されるコードと URL をブラウザで入力（GitHub アカウントで認証）
+5. **VS Code Tunnel 名** — トンネル名を入力（Enter でホスト名がデフォルト）
 
 ## 作業終了時
 
 ```bash
-./cleanup.sh                                    # 認証情報を削除（Tailscale含む）
+./cleanup.sh                                    # 認証情報を全て削除
 ./cleanup.sh --keep-tailscale                   # Tailscale は残す
+./cleanup.sh --keep-vscode                      # VS Code Tunnel は残す
 ./cleanup.sh --uninstall                        # 認証削除 + ツールもアンインストール
 ```
 
