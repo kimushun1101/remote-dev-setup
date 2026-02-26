@@ -133,9 +133,8 @@ setup_vscode_tunnel() {
     local arch os_arch
     arch=$(uname -m)
     case "$arch" in
-      x86_64)  os_arch="cli-linux-x64" ;;
-      aarch64) os_arch="cli-linux-arm64" ;;
-      armv7l)  os_arch="cli-linux-armhf" ;;
+      x86_64)  os_arch="cli-alpine-x64" ;;
+      aarch64) os_arch="cli-alpine-arm64" ;;
       *)       error "未対応のアーキテクチャ: ${arch}" ;;
     esac
 
