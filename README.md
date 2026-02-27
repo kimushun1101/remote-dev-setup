@@ -38,8 +38,17 @@ https://login.tailscale.com でアカウントを作成しておく。
 
 ## セットアップ手順
 
+リモート開発機に SSH サーバーを導入
+
 ```bash
-# 1. リモート開発機に SSH でログイン
+# サーバー
+sudo apt update && sudo apt install -y openssh-server
+```
+
+SSH ログイン
+
+```bash
+# ローカル
 ssh user@192.168.x.x
 ```
 
